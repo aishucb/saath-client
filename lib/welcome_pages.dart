@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'forum_page.dart';
 import 'config/api_config.dart';
+import 'app_footer.dart';
 
 class WelcomePage extends StatefulWidget {
   final String? email;
@@ -253,28 +254,21 @@ class _WelcomePageState extends State<WelcomePage> {
           Expanded(child: Container()),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.pinkAccent,
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Events'),
-          BottomNavigationBarItem(icon: Icon(Icons.forum), label: 'Forum'),
-          BottomNavigationBarItem(icon: Icon(Icons.spa), label: 'Wellness'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-        ],
-        currentIndex: 0,
+      bottomNavigationBar: AppFooter(
+        currentIndex: 0, // Home tab
         onTap: (index) {
-  if (index == 2) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => ForumPage()),
-    );
-  }
-},
+          if (index == 0) {
+            // Already on home
+          } else if (index == 1) {
+            Navigator.pushReplacementNamed(context, '/events');
+          } else if (index == 2) {
+            Navigator.pushReplacementNamed(context, '/forum');
+          } else if (index == 3) {
+            Navigator.pushReplacementNamed(context, '/wellness');
+          } else if (index == 4) {
+            Navigator.pushReplacementNamed(context, '/chat');
+          }
+        },
       ),
     );
   }
@@ -451,6 +445,12 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
             'isPotentialMatch': user['isPotentialMatch'] ?? false,
             'showedInterest': user['showedInterest'] ?? false,
           }).toList();
+          
+          // Reset currentUserIndex if it's out of bounds
+          if (currentUserIndex >= users.length) {
+            currentUserIndex = 0;
+          }
+          
           isLoading = false;
         });
       } else {
@@ -472,13 +472,24 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
   void showNextUser() {
     if (users.isNotEmpty) {
       setState(() {
-        currentUserIndex = (currentUserIndex + 1) % users.length;
+        // Ensure currentUserIndex is within bounds
+        if (currentUserIndex >= users.length) {
+          currentUserIndex = 0;
+        } else {
+          currentUserIndex = (currentUserIndex + 1) % users.length;
+        }
       });
     }
   }
 
   Future<void> likeAndShowNext() async {
     if (users.isEmpty) return;
+    
+    // Ensure currentUserIndex is within bounds
+    if (currentUserIndex >= users.length) {
+      currentUserIndex = 0;
+    }
+    
     final currentUser = users[currentUserIndex];
     final currentUserId = currentUser['id'];
     // Check if we have the current logged-in user's ID
@@ -642,6 +653,11 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
       );
     }
 
+    // Ensure currentUserIndex is within bounds
+    if (currentUserIndex >= users.length) {
+      currentUserIndex = 0;
+    }
+    
     final currentUser = users[currentUserIndex];
     final displayName = currentUser['name'];
     final displayAge = currentUser['age'];
@@ -703,33 +719,31 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
           Expanded(child: Container()),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.pinkAccent,
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Events'),
-          BottomNavigationBarItem(icon: Icon(Icons.forum), label: 'Forum'),
-          BottomNavigationBarItem(icon: Icon(Icons.spa), label: 'Wellness'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-        ],
-        currentIndex: 0,
+      bottomNavigationBar: AppFooter(
+        currentIndex: 0, // Home tab
         onTap: (index) {
-  if (index == 2) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => ForumPage()),
-    );
-  }
-},
+          if (index == 0) {
+            // Already on home
+          } else if (index == 1) {
+            Navigator.pushReplacementNamed(context, '/events');
+          } else if (index == 2) {
+            Navigator.pushReplacementNamed(context, '/forum');
+          } else if (index == 3) {
+            Navigator.pushReplacementNamed(context, '/wellness');
+          } else if (index == 4) {
+            Navigator.pushReplacementNamed(context, '/chat');
+          }
+        },
       ),
     );
   }
 
   Widget _buildProfileCard(BuildContext context, String name, int age, String? picture, bool isBoosted, {bool isTopCard = false}) {
+    // Ensure currentUserIndex is within bounds
+    if (currentUserIndex >= users.length) {
+      currentUserIndex = 0;
+    }
+    
     // Get current user data for this card
     final currentUser = users[currentUserIndex];
     final isPotentialMatch = currentUser['isPotentialMatch'] ?? false;

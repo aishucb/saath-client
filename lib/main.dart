@@ -12,6 +12,7 @@ import 'login_signup_page.dart';
 import 'app_footer.dart';
 import 'welcome_pages.dart';
 import 'forum_page.dart';
+import 'chat_page.dart';
 
 void main() {
   runApp(
@@ -238,6 +239,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginSignupPage(),
         '/welcome': (context) => const WelcomePage(),
         '/forum': (context) => const ForumPage(),
+        '/chat': (context) => const ChatPage(),
         // Add other routes here as needed
       },
       onGenerateRoute: (settings) {
