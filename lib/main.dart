@@ -1,10 +1,17 @@
+/// Main entry point for the Saath app
+///
+/// This file initializes the app, sets up providers, and contains the HomePage and app state logic.
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'package:provider/provider.dart';
+import 'config/api_config.dart';
 import 'package:intl/intl.dart';
 import 'login_signup_page.dart';
+import 'app_footer.dart';
+import 'welcome_pages.dart';
+import 'forum_page.dart';
 
 void main() {
   runApp(
@@ -178,7 +185,7 @@ class AppState with ChangeNotifier {
 
       // Add a timeout to the request
       final response = await http.get(
-        Uri.parse('http://192.168.1.2:5000/'),
+        Uri.parse(ApiConfig.homeEndpoint),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -213,108 +220,27 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginSignupPage(),
+        '/welcome': (context) => const WelcomePage(),
+        '/forum': (context) => const ForumPage(),
+        // Add other routes here as needed
+      },
+      onGenerateRoute: (settings) {
+        // Handle any undefined routes
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: Text('No route defined for ${settings.name}'),
+            ),
+          ),
+        );
+      },
       debugShowCheckedModeBanner: false,
     );
   }
 }
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  @override
-  void initState() {
-    super.initState();
-    // Fetch message when the widget is first created
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppState>().fetchMessage();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Saath App'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Consumer<AppState>(
-          builder: (context, appState, _) {
-            if (appState.isLoading) {
-              return const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text('Connecting to server...'),
-                ],
-              );
-            }
-
-            if (appState.error.isNotEmpty) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                    child: Text(
-                      appState.error,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => appState.fetchMessage(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              );
-            }
-
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 64),
-                const SizedBox(height: 24),
-                Text(
-                  'Connected to Server',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                  child: Text(
-                    appState.message,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () => appState.fetchMessage(),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh'),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
+// Welcome page is now the main landing page after login
+// See welcome_pages.dart for the implementation

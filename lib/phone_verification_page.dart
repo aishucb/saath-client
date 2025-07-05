@@ -1,9 +1,16 @@
+/// PhoneVerificationPage for the Saath app
+///
+/// This file handles phone number verification, OTP input, and related logic for user authentication.
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io'; // For InternetAddress and SocketException
 import 'package:flutter/services.dart'; // For TextInputFormatter
 import 'package:client/main.dart'; // Import HomePage
+import 'config/api_config.dart'; // Import ApiConfig
+import 'welcome_pages.dart'; // Import Welcome and WelcomeBack pages
+import 'user_details_form_page.dart';
+import 'app_footer.dart'; // For TextInputFormatter
 
 class PhoneVerificationPage extends StatefulWidget {
   const PhoneVerificationPage({super.key});
@@ -19,7 +26,14 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
   bool _isPhoneValid = false;
   bool _isLoading = false;
   String? _verificationPhoneNumber;
+  
+  // Country code related state
+  final _countryCodeController = TextEditingController(text: '+91');
+  
+  // Get the full phone number with country code
+  String get _fullPhoneNumber => '${_countryCodeController.text.trim()}${_phoneController.text.trim()}';
 
+  // Handle OTP input changes
   void _onOtpChanged(String value, int index) {
     if (value.length == 1 && index < 5) {
       FocusScope.of(context).requestFocus(_focusNodes[index + 1]);
@@ -31,6 +45,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     }
   }
 
+  // Verify OTP
   Future<void> _verifyOtp() async {
     final otp = _otpControllers.map((controller) => controller.text).join();
     if (otp.length != 6) return;
@@ -48,9 +63,9 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
       });
       
       print('[DEBUG] Verifying OTP: $otp for phone: $_verificationPhoneNumber');
-      
+    
       final response = await http.post(
-        Uri.parse('http://192.168.1.2:5000/api/verify-otp'),
+        Uri.parse('${ApiConfig.baseUrl}/api/verify-otp'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -64,10 +79,26 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
       if (!mounted) return;
       
       if (response.statusCode == 200) {
-        // OTP verified successfully
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomePage()),
+        final data = jsonDecode(response.body);
+        final status = data['registrationStatus'];
+        if (status == 'newly_registered') {
+          // Pass phone number to UserDetailsFormPage for auto-population
+          String? phone = _verificationPhoneNumber;
+          if (phone != null && phone.startsWith('+91')) {
+            phone = phone.substring(3); // Remove country code for display
+          }
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => UserDetailsFormPage(phone: phone)),
+          );
+        } else if (status == 'already_registered') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => WelcomeBackPage()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Unknown registration status')),
           );
         }
       } else {
@@ -92,6 +123,102 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     }
   }
   
+  // Build country code input field
+  Widget _buildCountryCodeInput() {
+    return SizedBox(
+      width: 100,
+      child: TextField(
+        controller: _countryCodeController,
+        keyboardType: TextInputType.phone,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: '+91',
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          isDense: true,
+        ),
+        onChanged: (value) {
+          final newValue = value.replaceAll(RegExp(r'[^0-9+]'), '');
+          if (newValue != value) {
+            _countryCodeController.value = TextEditingValue(
+              text: newValue,
+              selection: TextSelection.collapsed(offset: newValue.length),
+            );
+          }
+          // Re-validate phone number when country code changes
+          _validatePhone(_phoneController.text);
+        },
+      ),
+    );
+  }
+
+  // Build phone input field with country code
+  Widget _buildPhoneInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Enter your phone number',
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.black,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            // Country code input
+            _buildCountryCodeInput(),
+            const SizedBox(width: 10),
+            // Phone number input
+            Expanded(
+              child: TextField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  hintText: 'Phone number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.blue, width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  isDense: true,
+                ),
+                onChanged: _validatePhone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(15), // Reasonable max length for phone numbers
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildOtpInput() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -101,11 +228,12 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           child: TextField(
             controller: _otpControllers[index],
             focusNode: _focusNodes[index],
-            keyboardType: TextInputType.text,
+            keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
             textCapitalization: TextCapitalization.characters,
             maxLength: 1,
             textInputAction: TextInputAction.next,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             onChanged: (value) => _onOtpChanged(value, index),
             style: const TextStyle(
               fontSize: 18,
@@ -138,6 +266,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
   @override
   void dispose() {
     _phoneController.dispose();
+    _countryCodeController.dispose();
     for (var controller in _otpControllers) {
       controller.dispose();
     }
@@ -151,8 +280,10 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     setState(() {
       // Remove all non-digit characters and check length
       final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-      _isPhoneValid = digits.length == 10;
-      print('Phone validation: $digits (${digits.length} digits) - Valid: $_isPhoneValid');
+      _verificationPhoneNumber = '${_countryCodeController.text}$digits';
+      // More flexible validation - at least 7 digits, max 15
+      _isPhoneValid = digits.length >= 7 && digits.length <= 15;
+      print('Phone validation: ${_countryCodeController.text}$digits (${digits.length} digits) - Valid: $_isPhoneValid');
     });
   }
 
@@ -169,7 +300,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _verificationPhoneNumber = '+91$phoneNumber';
+      _verificationPhoneNumber = _fullPhoneNumber;
       // Clear previous OTP fields
       for (var controller in _otpControllers) {
         controller.clear();
@@ -179,15 +310,15 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     try {
       // 1. Test network connectivity
       debugPrint('\n[1/4] Testing network connectivity...');
-      final result = await InternetAddress.lookup('192.168.1.2');
+      final result = await InternetAddress.lookup(ApiConfig.networkCheckIp);
       if (result.isEmpty || result[0].rawAddress.isEmpty) {
         throw 'No internet connection';
       }
       debugPrint('✓ Network connectivity OK');
 
       // 2. Prepare request
-      final url = Uri.parse('http://192.168.1.2:5000/api/otp');
-      final requestBody = {'phone': '+91$phoneNumber'};
+      final url = Uri.parse('${ApiConfig.baseUrl}/api/otp');
+      final requestBody = {'phone': _verificationPhoneNumber};
       final requestBodyJson = jsonEncode(requestBody);
       
       debugPrint('\n[2/4] Request details:');
@@ -251,6 +382,22 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
         // Success - OTP sent
         final responseData = jsonDecode(response.body);
         print('OTP sent successfully');
+        // Show OTP in alert if present
+        if (responseData['otp'] != null && mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Your OTP'),
+              content: Text('OTP: \\${responseData['otp']}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
         // Focus on first OTP field after sending OTP
         if (_focusNodes.isNotEmpty) {
           FocusScope.of(context).requestFocus(_focusNodes[0]);
@@ -294,9 +441,12 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Main page structure for phone verification
+    // Main page structure for phone verification
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: true,
+      // The main body of the page
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -325,62 +475,8 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                // Enter phone label
-                const Text(
-                  'Enter your phone number',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Phone input
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.grey.shade100,
-                      ),
-                      child: const Text(
-                        '+91',
-                        style: TextStyle(fontSize: 16, color: Colors.black),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        onChanged: _validatePhone,
-                        maxLength: 15, // Allow for formatting
-                        decoration: InputDecoration(
-                          hintText: '123-456-7890',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.blue.shade200),
-                          ),
-                          counterText: '', // Hide character counter
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                // Phone input with country code selector
+                _buildPhoneInput(),
                 const SizedBox(height: 18),
                 // Send code button (disabled style)
                 SizedBox(
