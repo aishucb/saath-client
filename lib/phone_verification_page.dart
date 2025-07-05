@@ -92,9 +92,32 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
             MaterialPageRoute(builder: (context) => UserDetailsFormPage(phone: phone)),
           );
         } else if (status == 'already_registered') {
+          // Extract user data from the response
+          final customer = data['customer'];
+          final userId = customer?['_id'];
+          final userName = customer?['name'] ?? 'User';
+          final userAge = customer?['age'] ?? 25;
+          final profilePicture = customer?['picture'];
+          final isBoosted = customer?['isBoosted'] ?? false;
+          
+          print('OTP Login - Full response data: $data');
+          print('OTP Login - Customer object: $customer');
+          print('OTP Login - Extracted user ID: $userId');
+          print('OTP Login - User name: $userName');
+          
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => WelcomeBackPage()),
+            MaterialPageRoute(
+              builder: (context) => WelcomeBackPage(
+                userName: userName,
+                userAge: userAge,
+                profilePicture: profilePicture,
+                matchesCount: 0,
+                sparksLeft: 5,
+                isBoosted: isBoosted,
+                currentUserId: userId, // Pass the MongoDB _id
+              ),
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -2,8 +2,11 @@
 ///
 /// This file contains the form for users to enter or update their personal details after registration.
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'welcome_pages.dart';
 import 'app_footer.dart';
+import 'config/api_config.dart';
 
 class UserDetailsFormPage extends StatefulWidget {
   final String? email;
@@ -20,6 +23,7 @@ class _UserDetailsFormPageState extends State<UserDetailsFormPage> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -37,19 +41,65 @@ class _UserDetailsFormPageState extends State<UserDetailsFormPage> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Send data to backend or proceed
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Details submitted!')),
-      );
-      // Navigate to WelcomeBackPage after submission
-      Future.delayed(const Duration(milliseconds: 500), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => WelcomeBackPage()),
-        );
+      setState(() {
+        _isLoading = true;
       });
+
+      try {
+        // Send data to backend
+        final response = await http.post(
+          Uri.parse('${ApiConfig.baseUrl}/api/customer'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'username': _nameController.text,
+            'phone': _phoneController.text,
+            'email': _emailController.text,
+          }),
+        ).timeout(Duration(seconds: 10));
+
+        print('Customer API response status: ${response.statusCode}');
+        print('Customer API response body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final userId = data['id']; // This is the MongoDB _id
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Profile updated successfully!')),
+          );
+
+          // Navigate to WelcomeBackPage with the user ID
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => WelcomeBackPage(
+                userName: _nameController.text,
+                userAge: 25, // Default age
+                profilePicture: null, // Will be set when user uploads photo
+                matchesCount: 0, // New user starts with 0 matches
+                sparksLeft: 5, // Default sparks for new user
+                isBoosted: false, // New user is not boosted
+                currentUserId: userId, // Pass the MongoDB _id
+              ),
+            ),
+          );
+        } else {
+          final error = jsonDecode(response.body)['error'] ?? 'Failed to update profile';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error)),
+          );
+        }
+      } catch (e) {
+        print('Error updating profile: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -105,8 +155,21 @@ Navigator.pushReplacementNamed(context, '/welcome');
               ),
               SizedBox(height: 32),
               ElevatedButton(
-                onPressed: _submit,
-                child: Text('Submit'),
+                onPressed: _isLoading ? null : _submit,
+                child: _isLoading 
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text('Saving...'),
+                      ],
+                    )
+                  : Text('Submit'),
               ),
             ],
           ),

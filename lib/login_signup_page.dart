@@ -210,7 +210,17 @@ class LoginSignupPage extends StatelessWidget {
                             );
                             Future.delayed(const Duration(milliseconds: 800), () {
                               Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(builder: (_) => WelcomeBackPage()),
+                                MaterialPageRoute(
+                                  builder: (_) => WelcomeBackPage(
+                                    userName: data['user']['name'],
+                                    userAge: data['user']['age'], // If age is available
+                                    profilePicture: data['user']['picture'], // Google profile picture
+                                    matchesCount: data['user']['matchesCount'] ?? 0,
+                                    sparksLeft: data['user']['sparksLeft'] ?? 5,
+                                    isBoosted: data['user']['isBoosted'] ?? false,
+                                    currentUserId: data['user']['_id'], // Pass the current user ID
+                                  ),
+                                ),
                               );
                             });
                           } else {
