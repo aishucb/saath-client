@@ -5,7 +5,7 @@
 
 class ApiConfig {
   // Base URL for all API requests - replace with your actual server IP
-  static const String baseUrl = 'http://192.168.1.5:5000';
+  static const String baseUrl = 'http://192.168.1.4:5000';
   
   // API Endpoints
   static String get homeEndpoint => '$baseUrl/';
