@@ -47,6 +47,14 @@ class _UserDetailsFormPageState extends State<UserDetailsFormPage> {
         _isLoading = true;
       });
 
+      String normalizePhone(String phone) {
+        final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+        if (digits.length == 10) {
+          return '91$digits';
+        }
+        return digits;
+      }
+
       try {
         // Send data to backend
         final response = await http.post(
@@ -54,7 +62,7 @@ class _UserDetailsFormPageState extends State<UserDetailsFormPage> {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'username': _nameController.text,
-            'phone': _phoneController.text,
+            'phone': normalizePhone(_phoneController.text),
             'email': _emailController.text,
           }),
         ).timeout(Duration(seconds: 10));

@@ -56,13 +56,14 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
       );
       return;
     }
+    final normalizedPhone = normalizePhone(_verificationPhoneNumber!);
     
     try {
       setState(() {
         _isLoading = true;
       });
       
-      print('[DEBUG] Verifying OTP: $otp for phone: $_verificationPhoneNumber');
+      print('[DEBUG] Verifying OTP: $otp for phone: $normalizedPhone');
     
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/verify-otp'),
@@ -71,7 +72,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'phone': _verificationPhoneNumber,
+          'phone': normalizedPhone,
           'otp': otp,
         }),
       );
@@ -310,20 +311,30 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     });
   }
 
+  // Helper to normalize phone number
+  String normalizePhone(String phone) {
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 10) {
+      return '91$digits';
+    }
+    return digits;
+  }
+
   Future<void> _sendOtp(String phoneNumber) async {
     // Close keyboard if open
     FocusScope.of(context).unfocus();
     
-    debugPrint('_sendOtp method called with: $phoneNumber');
+    final normalizedPhone = normalizePhone(phoneNumber);
+    debugPrint('_sendOtp method called with: $normalizedPhone');
     // Clear previous logs
     debugPrint('\n' * 5);
     debugPrint('=== STARTING NEW OTP REQUEST ===');
-    debugPrint('Phone: $phoneNumber');
+    debugPrint('Phone: $normalizedPhone');
     
     if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _verificationPhoneNumber = _fullPhoneNumber;
+      _verificationPhoneNumber = normalizedPhone;
       // Clear previous OTP fields
       for (var controller in _otpControllers) {
         controller.clear();
@@ -341,7 +352,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
 
       // 2. Prepare request
       final url = Uri.parse('${ApiConfig.baseUrl}/api/otp');
-      final requestBody = {'phone': _verificationPhoneNumber};
+      final requestBody = {'phone': normalizedPhone};
       final requestBodyJson = jsonEncode(requestBody);
       
       debugPrint('\n[2/4] Request details:');

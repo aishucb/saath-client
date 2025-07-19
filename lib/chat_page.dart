@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_footer.dart';
 import 'config/api_config.dart';
+import 'pages/chat_detail_page.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({Key? key}) : super(key: key);
@@ -71,10 +72,16 @@ class _ChatPageState extends State<ChatPage> {
         error = null;
       });
 
+      print('Fetching mutual connections for user: $currentUserId');
+      print('API URL: ${ApiConfig.baseUrl}/api/chat/mutual-connections/$currentUserId');
+
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/chat/mutual-connections/$currentUserId'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -83,24 +90,43 @@ class _ChatPageState extends State<ChatPage> {
             mutualConnections = List<Map<String, dynamic>>.from(data['data']['mutualConnections']);
             isLoading = false;
           });
+          print('Found ${mutualConnections.length} mutual connections');
         } else {
           setState(() {
-            error = 'No mutual connections found';
+            mutualConnections = []; // Empty array instead of error
             isLoading = false;
           });
+          print('No mutual connections found');
         }
       } else {
         setState(() {
           error = 'Failed to load connections: ${response.statusCode}';
           isLoading = false;
         });
+        print('Error response: ${response.body}');
       }
     } catch (e) {
+      print('Exception in fetchMutualConnections: $e');
       setState(() {
         error = 'Network error: $e';
         isLoading = false;
       });
     }
+  }
+
+  void _navigateToChat(Map<String, dynamic> connection) {
+    final otherUserId = connection['_id'] ?? connection['id'];
+    final otherUserName = connection['name'] ?? 'Unknown User';
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatDetailPage(
+          otherUserId: otherUserId,
+          otherUserName: otherUserName,
+        ),
+      ),
+    );
   }
 
   @override
@@ -137,29 +163,29 @@ class _ChatPageState extends State<ChatPage> {
                   'Chats',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                 ),
-                                 Row(
-                   children: [
-                     IconButton(
-                       icon: Icon(Icons.search, size: 26, color: Colors.grey[700]),
-                       onPressed: () {
-                         // TODO: Implement search functionality
-                       },
-                     ),
-                     SizedBox(width: 8),
-                     IconButton(
-                       icon: Icon(Icons.refresh, size: 26, color: Colors.grey[700]),
-                       onPressed: fetchMutualConnections,
-                       tooltip: 'Refresh connections',
-                     ),
-                     SizedBox(width: 8),
-                     IconButton(
-                       icon: Icon(Icons.more_vert, size: 26, color: Colors.grey[700]),
-                       onPressed: () {
-                         // TODO: Implement more options
-                       },
-                     ),
-                   ],
-                 ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.search, size: 26, color: Colors.grey[700]),
+                      onPressed: () {
+                        // TODO: Implement search functionality
+                      },
+                    ),
+                    SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(Icons.refresh, size: 26, color: Colors.grey[700]),
+                      onPressed: fetchMutualConnections,
+                      tooltip: 'Refresh connections',
+                    ),
+                    SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(Icons.more_vert, size: 26, color: Colors.grey[700]),
+                      onPressed: () {
+                        // TODO: Implement more options
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -198,248 +224,106 @@ class _ChatPageState extends State<ChatPage> {
           ),
           // Chat list
           Expanded(
-            child: Builder(
-              builder: (context) {
-                if (isLoading) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+            child: isLoading
+                ? Center(child: CircularProgressIndicator())
+                : error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text(
+                              error!,
+                              style: TextStyle(color: Colors.grey[600]),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: fetchMutualConnections,
+                              child: Text('Retry'),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Loading mutual connections...',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  );
-                } else if (error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-                        SizedBox(height: 16),
-                        Text(
-                          error!,
-                          style: TextStyle(color: Colors.grey[600]),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadUserAndFetchConnections,
-                          child: Text('Retry'),
-                        ),
-                        if (currentUserId == null) ...[
-                          SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pushReplacementNamed(context, '/login');
+                      )
+                    : mutualConnections.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No connections yet',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Connect with people to start chatting!',
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            itemCount: mutualConnections.length,
+                            itemBuilder: (context, index) {
+                              final connection = mutualConnections[index];
+                              final name = connection['name'] ?? 'Unknown User';
+                              final picture = connection['picture'];
+                              
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  radius: 25,
+                                  backgroundColor: Colors.grey[300],
+                                  backgroundImage: picture != null 
+                                      ? NetworkImage(picture) 
+                                      : null,
+                                  child: picture == null
+                                      ? Text(
+                                          name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                title: Text(
+                                  name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  'Tap to start chatting',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                trailing: Icon(
+                                  Icons.chat_bubble_outline,
+                                  color: Colors.blue,
+                                  size: 20,
+                                ),
+                                onTap: () => _navigateToChat(connection),
+                              );
                             },
-                            child: Text('Go to Login'),
                           ),
-                        ],
-                      ],
-                    ),
-                  );
-                } else if (mutualConnections.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-                        SizedBox(height: 16),
-                        Text(
-                          'No mutual connections yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Start following people to see them here!',
-                          style: TextStyle(color: Colors.grey[500]),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                return ListView.separated(
-                  padding: EdgeInsets.only(top: 8),
-                  itemCount: mutualConnections.length,
-                  separatorBuilder: (_, __) => Divider(indent: 72, endIndent: 16, height: 1),
-                  itemBuilder: (context, index) {
-                    final connection = mutualConnections[index];
-                    return _ChatTile(
-                      name: connection['name'] ?? 'Unknown User',
-                      lastMessage: 'Tap to start chatting!',
-                      timestamp: 'Mutual connection',
-                      unreadCount: 0,
-                      isOnline: true, // Assume online for mutual connections
-                      profilePicture: connection['profilePicture'] ?? '',
-                      onTap: () {
-                        _showChatDetail(context, connection);
-                      },
-                    );
-                  },
-                );
-              },
-            ),
           ),
         ],
       ),
-    );
-  }
-
-  void _showChatDetail(BuildContext context, Map<String, dynamic> connection) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Chat with ${connection['name']}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Mutual Connection'),
-            SizedBox(height: 8),
-            Text('Name: ${connection['name'] ?? 'Unknown'}'),
-            Text('Email: ${connection['email'] ?? 'Not provided'}'),
-            Text('Phone: ${connection['phone'] ?? 'Not provided'}'),
-            SizedBox(height: 16),
-            Text('This would open a detailed chat conversation.\n\nChat feature coming soon!'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChatTile extends StatelessWidget {
-  final String name;
-  final String lastMessage;
-  final String timestamp;
-  final int unreadCount;
-  final bool isOnline;
-  final String profilePicture;
-  final VoidCallback onTap;
-
-  const _ChatTile({
-    required this.name,
-    required this.lastMessage,
-    required this.timestamp,
-    required this.unreadCount,
-    required this.isOnline,
-    required this.profilePicture,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Stack(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundImage: NetworkImage(profilePicture),
-            onBackgroundImageError: (exception, stackTrace) {
-              // Fallback to initials if image fails to load
-            },
-            child: profilePicture.isEmpty
-                ? Text(
-                    name.split(' ').map((n) => n[0]).join(''),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  )
-                : null,
-          ),
-          if (isOnline)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-              ),
-            ),
-        ],
-      ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              name,
-              style: TextStyle(
-                fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
-                fontSize: 16,
-              ),
-            ),
-          ),
-          Text(
-            timestamp,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-      subtitle: Row(
-        children: [
-          Expanded(
-            child: Text(
-              lastMessage,
-              style: TextStyle(
-                fontSize: 14,
-                color: unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-                fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (unreadCount > 0) ...[
-            SizedBox(width: 8),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.pinkAccent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                unreadCount.toString(),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      onTap: onTap,
     );
   }
 } 

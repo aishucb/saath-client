@@ -63,48 +63,71 @@ class _WelcomePageState extends State<WelcomePage> {
   }
 
   void _submitForm() async {
-  final username = _usernameController.text.trim();
-  final phone = _phoneController.text.trim();
-  final email = _emailController.text.trim();
+    final username = _usernameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
 
-  final url = Uri.parse('http://192.168.1.4:5000/api/customer'); // Use your computer's WiFi IP address from .env
-  try {
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'phone': phone,
-        'email': email,
-      }),
-    );
-    final respJson = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text('Success'),
-          content: Text(respJson['message'] ?? 'Customer details submitted successfully!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => WelcomePage()), // Replace with your homepage widget if different
-                );
-              },
-              child: Text('OK'),
-            ),
-          ],
-        ),
+    String normalizePhone(String phone) {
+      final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.length == 10) {
+        return '91$digits';
+      }
+      return digits;
+    }
+
+    final url = Uri.parse('http://192.168.1.6:5000/api/customer'); // Use your computer's WiFi IP address from .env
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'phone': normalizePhone(phone),
+          'email': email,
+        }),
       );
-    } else {
+      final respJson = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text('Success'),
+            content: Text(respJson['message'] ?? 'Customer details submitted successfully!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => WelcomePage()), // Replace with your homepage widget if different
+                  );
+                },
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text('Error'),
+            content: Text(respJson['error'] ?? 'Failed to submit details. Please try again.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: Text('Error'),
-          content: Text(respJson['error'] ?? 'Failed to submit details. Please try again.'),
+          content: Text('An error occurred: $e'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -114,22 +137,7 @@ class _WelcomePageState extends State<WelcomePage> {
         ),
       );
     }
-  } catch (e) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Error'),
-        content: Text('An error occurred: $e'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {

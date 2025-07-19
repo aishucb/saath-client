@@ -237,7 +237,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginSignupPage(),
-        '/welcome': (context) => const WelcomePage(),
+        '/welcome': (context) => const WelcomeBackPage(), // Changed to WelcomeBackPage
         '/forum': (context) => const ForumPage(),
         '/chat': (context) => const ChatPage(),
         // Add other routes here as needed

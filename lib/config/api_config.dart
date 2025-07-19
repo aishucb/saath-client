@@ -4,8 +4,8 @@
 /// used throughout the application.
 
 class ApiConfig {
-  // Base URL for all API requests - replace with your actual server IP
-  static const String baseUrl = 'http://192.168.1.4:5000';
+  // Base URL for all API requests - use your PC's local IP for real device access
+  static const String baseUrl = 'http://192.168.1.6:5000';
   
   // API Endpoints
   static String get homeEndpoint => '$baseUrl/';
