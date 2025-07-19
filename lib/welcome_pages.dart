@@ -75,7 +75,7 @@ class _WelcomePageState extends State<WelcomePage> {
       return digits;
     }
 
-    final url = Uri.parse('http://192.168.1.6:5000/api/customer'); // Use your computer's WiFi IP address from .env
+    final url = Uri.parse('http://192.168.1.4:5000/api/customer'); // Use your computer's WiFi IP address from .env
     try {
       final response = await http.post(
         url,

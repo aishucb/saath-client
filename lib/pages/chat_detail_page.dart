@@ -112,12 +112,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           print('[ChatDetailPage] Using provided sessionId: $sessionId');
           // Always pass otherUserId when joining
           await _chatService.webSocketService.joinSession(sessionId!, otherUserId: widget.otherUserId);
+          // Load chat history after joining session
+          await _chatService.joinChatSession(sessionId!);
         } else {
           sessionId = await _chatService.createChatSession(widget.otherUserId);
           print('[ChatDetailPage] Created/fetched sessionId: $sessionId for user pair $_currentUserId <-> ${widget.otherUserId}');
           if (sessionId != null) {
             // Always pass otherUserId when joining
             await _chatService.webSocketService.joinSession(sessionId!, otherUserId: widget.otherUserId);
+            // Load chat history after joining session
+            await _chatService.joinChatSession(sessionId!);
           } else {
             setState(() {
               _error = 'Failed to create chat session';
