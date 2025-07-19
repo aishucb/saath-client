@@ -16,6 +16,8 @@ class ChatService {
   String? _otherUserId; // Store the other user ID
   List<ChatMessage> _messages = [];
   Map<String, List<ChatMessage>> _chatHistory = {};
+  bool allMessagesLoaded = false;
+  bool isLoadingMore = false;
 
   // Callbacks
   Function(List<ChatMessage>)? onMessagesUpdated;
@@ -292,5 +294,39 @@ class ChatService {
   // Dispose resources
   void dispose() {
     _webSocketService.dispose();
+  }
+
+  // Fetch messages with pagination
+  Future<List<ChatMessage>> fetchMessagesPaginated({int limit = 30, DateTime? before}) async {
+    if (_currentUserId == null || _otherUserId == null) return [];
+    if (allMessagesLoaded || isLoadingMore) return [];
+    isLoadingMore = true;
+    try {
+      String url = '${ApiConfig.baseUrl}/api/chat/messages?user1=$_currentUserId&user2=$_otherUserId&limit=$limit';
+      if (before != null) {
+        url += '&before=${before.toIso8601String()}';
+      }
+      print('Requesting: $url');
+      final response = await http.get(Uri.parse(url), headers: {'Content-Type': 'application/json'});
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final List<ChatMessage> fetched = data.map((json) => ChatMessage.fromJson(json)).toList();
+        if (fetched.length < limit) allMessagesLoaded = true;
+        isLoadingMore = false;
+        return fetched;
+      } else {
+        isLoadingMore = false;
+        return [];
+      }
+    } catch (e) {
+      isLoadingMore = false;
+      return [];
+    }
+  }
+
+  // Helper to prepend older messages
+  void prependMessages(List<ChatMessage> older) {
+    _messages = [...older, ..._messages];
+    onMessagesUpdated?.call(_messages);
   }
 } 

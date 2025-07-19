@@ -31,10 +31,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   bool _canSend = false; // Only allow sending after joined
   bool _isDisposed = false; // Track if disposed
   ChatMessage? _replyToMessage; // Track the message being replied to
+  bool _isLoadingMore = false;
+  bool _allMessagesLoaded = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _initializeChat();
   }
 
@@ -284,25 +287,42 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                               ],
                             ),
                           )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: EdgeInsets.all(16),
-                            itemCount: _messages.length,
-                            itemBuilder: (context, index) {
-                              final message = _messages[index];
-                              final isMyMessage = message.sender == _currentUserId;
-                              return GestureDetector(
-                                onHorizontalDragEnd: (details) {
-                                  // Only trigger on a strong enough swipe
-                                  if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 200) {
-                                    setState(() {
-                                      _replyToMessage = message;
-                                    });
-                                  }
+                        : Stack(
+                            children: [
+                              ListView.builder(
+                                controller: _scrollController,
+                                padding: EdgeInsets.all(16),
+                                itemCount: _messages.length,
+                                reverse: false,
+                                itemBuilder: (context, index) {
+                                  final message = _messages[index];
+                                  final isMyMessage = message.sender == _currentUserId;
+                                  return GestureDetector(
+                                    onHorizontalDragEnd: (details) {
+                                      // Only trigger on a strong enough swipe
+                                      if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 200) {
+                                        setState(() {
+                                          _replyToMessage = message;
+                                        });
+                                      }
+                                    },
+                                    child: _buildMessageBubble(message, isMyMessage),
+                                  );
                                 },
-                                child: _buildMessageBubble(message, isMyMessage),
-                              );
-                            },
+                              ),
+                              if (_isLoadingMore)
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.only(top: 8),
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
           ),
           // Reply preview
@@ -539,12 +559,24 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
-  @override
-  void dispose() {
-    _isDisposed = true;
-    _chatService.dispose();
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
+  void _onScroll() async {
+    print('Scroll position: ${_scrollController.position.pixels}, max: ${_scrollController.position.maxScrollExtent}, min: ${_scrollController.position.minScrollExtent}');
+    if (_scrollController.position.pixels <= _scrollController.position.minScrollExtent + 40 && !_isLoadingMore && !_allMessagesLoaded && !_isLoading && _messages.isNotEmpty) {
+      setState(() { _isLoadingMore = true; });
+      final oldest = _messages.first;
+      print('Fetching older messages before: ${oldest.timestamp.toIso8601String()}');
+      final older = await _chatService.fetchMessagesPaginated(before: oldest.timestamp);
+      if (older.isNotEmpty) {
+        // Deduplicate: only add messages not already in _messages
+        final existingIds = _messages.map((m) => m.id).toSet();
+        final newOlder = older.where((m) => !existingIds.contains(m.id)).toList();
+        setState(() {
+          _messages = [...newOlder, ..._messages];
+        });
+      } else {
+        setState(() { _allMessagesLoaded = true; });
+      }
+      setState(() { _isLoadingMore = false; });
+    }
   }
 } 
