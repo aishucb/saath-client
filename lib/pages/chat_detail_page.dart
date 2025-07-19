@@ -30,6 +30,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   String? _error;
   bool _canSend = false; // Only allow sending after joined
   bool _isDisposed = false; // Track if disposed
+  ChatMessage? _replyToMessage; // Track the message being replied to
 
   @override
   void initState() {
@@ -168,7 +169,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     if (message.isEmpty || !_canSend) return;
     print('Sending message from ChatDetailPage: $message'); // Debug print
     _messageController.clear();
-    await _chatService.sendMessage(message);
+    String? replyToId = _replyToMessage?.id;
+    await _chatService.sendMessage(message, replyTo: replyToId);
+    setState(() {
+      _replyToMessage = null;
+    });
   }
 
   @override
@@ -286,12 +291,55 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                             itemBuilder: (context, index) {
                               final message = _messages[index];
                               final isMyMessage = message.sender == _currentUserId;
-                              
-                              return _buildMessageBubble(message, isMyMessage);
+                              return GestureDetector(
+                                onHorizontalDragEnd: (details) {
+                                  // Only trigger on a strong enough swipe
+                                  if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 200) {
+                                    setState(() {
+                                      _replyToMessage = message;
+                                    });
+                                  }
+                                },
+                                child: _buildMessageBubble(message, isMyMessage),
+                              );
                             },
                           ),
           ),
-          
+          // Reply preview
+          if (_replyToMessage != null)
+            Container(
+              color: Colors.grey[200],
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Replying to',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                        Text(
+                          _replyToMessage!.content,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () {
+                      setState(() {
+                        _replyToMessage = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           // Message input
           Container(
             padding: EdgeInsets.all(16),
@@ -346,6 +394,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   Widget _buildMessageBubble(ChatMessage message, bool isMyMessage) {
     final isMine = message.sender.toString() == _currentUserId.toString();
+    // Find the replied-to message if this is a reply
+    ChatMessage? repliedMessage;
+    if (message.replyTo != null) {
+      repliedMessage = _messages.where((m) => m.id == message.replyTo).isNotEmpty
+          ? _messages.firstWhere((m) => m.id == message.replyTo)
+          : null;
+    }
     return Container(
       margin: EdgeInsets.only(bottom: 8),
       child: Row(
@@ -380,6 +435,48 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (repliedMessage != null) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 36,
+                          margin: EdgeInsets.only(right: 8, top: 2),
+                          decoration: BoxDecoration(
+                            color: isMine ? Colors.white70 : Colors.blue,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                repliedMessage.sender == _currentUserId ? 'You' : widget.otherUserName,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isMine ? Colors.white70 : Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                repliedMessage.content,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isMine ? Colors.white70 : Colors.black87,
+                                  fontStyle: FontStyle.italic,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                  ],
                   Text(
                     message.content,
                     style: TextStyle(
