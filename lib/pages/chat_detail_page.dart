@@ -426,73 +426,99 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isMine ? Colors.blue : Colors.grey[200],
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (repliedMessage != null) ...[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+            child: IntrinsicWidth(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isMine ? Colors.blue : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (repliedMessage != null) ...[
                         Container(
-                          width: 4,
-                          height: 36,
-                          margin: EdgeInsets.only(right: 8, top: 2),
-                          decoration: BoxDecoration(
-                            color: isMine ? Colors.white70 : Colors.blue,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                repliedMessage.sender == _currentUserId ? 'You' : widget.otherUserName,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isMine ? Colors.white70 : Colors.blue,
-                                  fontWeight: FontWeight.bold,
+                          margin: EdgeInsets.only(bottom: 6),
+                          child: GestureDetector(
+                            onTap: () {
+                              if (repliedMessage != null) {
+                                final index = _messages.indexWhere((m) => m.id == repliedMessage!.id);
+                                if (index != -1) {
+                                  _scrollController.animateTo(
+                                    index * 72.0, // Approximate height per message, adjust as needed
+                                    duration: Duration(milliseconds: 400),
+                                    curve: Curves.easeInOut,
+                                  );
+                                  // Optionally, you can add a highlight effect here
+                                }
+                              }
+                            },
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 4,
+                                  height: 36,
+                                  margin: EdgeInsets.only(right: 8, top: 2),
+                                  decoration: BoxDecoration(
+                                    color: isMine ? Colors.white70 : Colors.blue,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                repliedMessage.content,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: isMine ? Colors.white70 : Colors.black87,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 13,
+                                Flexible(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        repliedMessage.sender == _currentUserId ? 'You' : widget.otherUserName,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isMine ? Colors.white70 : Colors.blue,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        repliedMessage.content,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: true,
+                                        style: TextStyle(
+                                          color: isMine ? Colors.white70 : Colors.black87,
+                                          fontStyle: FontStyle.italic,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ],
-                    ),
-                    SizedBox(height: 6),
-                  ],
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      color: isMine ? Colors.white : Colors.black,
-                      fontSize: 16,
-                    ),
+                      Text(
+                        message.content,
+                        style: TextStyle(
+                          color: isMine ? Colors.white : Colors.black,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        DateFormat('HH:mm').format(message.timestamp),
+                        style: TextStyle(
+                          color: isMine ? Colors.white70 : Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    DateFormat('HH:mm').format(message.timestamp),
-                    style: TextStyle(
-                      color: isMine ? Colors.white70 : Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
