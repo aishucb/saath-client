@@ -37,6 +37,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   @override
   void initState() {
     super.initState();
+    _chatService.allMessagesLoaded = false;
     _scrollController.addListener(_onScroll);
     _initializeChat();
   }
@@ -560,8 +561,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 
   void _onScroll() async {
-    print('Scroll position: ${_scrollController.position.pixels}, max: ${_scrollController.position.maxScrollExtent}, min: ${_scrollController.position.minScrollExtent}');
-    if (_scrollController.position.pixels <= _scrollController.position.minScrollExtent + 40 && !_isLoadingMore && !_allMessagesLoaded && !_isLoading && _messages.isNotEmpty) {
+    print('onScroll called: pixels=${_scrollController.position.pixels}, min=${_scrollController.position.minScrollExtent}, isLoadingMore=$_isLoadingMore, allMessagesLoaded=$_allMessagesLoaded, isLoading=$_isLoading, messagesEmpty=${_messages.isEmpty}');
+    if (_scrollController.position.pixels <= _scrollController.position.minScrollExtent + 5
+      && !_isLoadingMore
+      && !_allMessagesLoaded
+      && !_isLoading
+      && _messages.isNotEmpty) {
       setState(() { _isLoadingMore = true; });
       final oldest = _messages.first;
       print('Fetching older messages before: ${oldest.timestamp.toIso8601String()}');

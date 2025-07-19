@@ -298,6 +298,7 @@ class ChatService {
 
   // Fetch messages with pagination
   Future<List<ChatMessage>> fetchMessagesPaginated({int limit = 30, DateTime? before}) async {
+    print('fetchMessagesPaginated called: allMessagesLoaded=$allMessagesLoaded, isLoadingMore=$isLoadingMore');
     if (_currentUserId == null || _otherUserId == null) return [];
     if (allMessagesLoaded || isLoadingMore) return [];
     isLoadingMore = true;
@@ -311,7 +312,11 @@ class ChatService {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final List<ChatMessage> fetched = data.map((json) => ChatMessage.fromJson(json)).toList();
-        if (fetched.length < limit) allMessagesLoaded = true;
+        print('Fetched ${fetched.length} messages');
+        for (var m in fetched) {
+          print('Fetched message: id=${m.id}, timestamp=${m.timestamp.toIso8601String()}');
+        }
+        if (fetched.isEmpty) allMessagesLoaded = true;
         isLoadingMore = false;
         return fetched;
       } else {
