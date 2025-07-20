@@ -13,6 +13,7 @@ import 'app_footer.dart';
 import 'welcome_pages.dart';
 import 'forum_page.dart';
 import 'chat_page.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // <-- Add this import
 
 void main() {
   runApp(
@@ -36,13 +37,26 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    _checkSessionAndNavigate();
+  }
+
+  Future<void> _checkSessionAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 2)); // Optional: keep splash for 2s
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('current_user_id');
+    if (mounted) {
+      if (userId != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => WelcomeBackPage(currentUserId: userId),
+          ),
+        );
+      } else {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginSignupPage()),
         );
       }
-    });
+    }
   }
 
   @override

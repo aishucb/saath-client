@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'forum_page.dart';
 import 'config/api_config.dart';
 import 'app_footer.dart';
+import 'login_signup_page.dart'; // Added import for LoginSignupPage
 
 class WelcomePage extends StatefulWidget {
   final String? email;
@@ -75,7 +76,7 @@ class _WelcomePageState extends State<WelcomePage> {
       return digits;
     }
 
-    final url = Uri.parse('http://192.168.1.4:5000/api/customer'); // Use your computer's WiFi IP address from .env
+    final url = Uri.parse('http://192.168.1.6:5000/api/customer'); // Use your computer's WiFi IP address from .env
     try {
       final response = await http.post(
         url,
@@ -336,25 +337,43 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
   void initState() {
     super.initState();
     print('WelcomeBackPage - initState called');
-    print('WelcomeBackPage - widget.currentUserId: ${widget.currentUserId}');
-    
-    // Save user session if provided via widget first
+    print('WelcomeBackPage - widget.currentUserId:  [33m${widget.currentUserId} [0m');
+
     if (widget.currentUserId != null) {
       print('WelcomeBackPage - Saving user session: ${widget.currentUserId}');
       saveUserSession(widget.currentUserId!);
+      setState(() {
+        currentUserId = widget.currentUserId;
+      });
+      _initializeData();
     } else {
-      print('WelcomeBackPage - No currentUserId provided via widget');
+      print('WelcomeBackPage - No currentUserId provided via widget, loading from SharedPreferences');
+      loadUserSessionAndInit();
     }
-    
-    // Load session and then fetch users
-    _initializeData();
+  }
+
+  Future<void> loadUserSessionAndInit() async {
+    try {
+      print('WelcomeBackPage - Loading user session...');
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('current_user_id');
+      setState(() {
+        currentUserId = userId;
+      });
+      print('WelcomeBackPage - Loaded user session: $currentUserId');
+      await _initializeData();
+    } catch (e) {
+      print('WelcomeBackPage - Error loading user session: $e');
+      setState(() {
+        error = 'Error loading session: $e';
+      });
+    }
   }
 
   Future<void> _initializeData() async {
-    // Clear any existing session first
-    await clearUserSession();
-    // Save the new user session
+    // Only clear and save session if widget.currentUserId is provided
     if (widget.currentUserId != null) {
+      await clearUserSession();
       await saveUserSession(widget.currentUserId!);
     }
     await fetchUsers();
@@ -681,6 +700,21 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
         centerTitle: true,
         toolbarHeight: 54,
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout, color: Colors.pinkAccent),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await clearUserSession();
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginSignupPage()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.center,

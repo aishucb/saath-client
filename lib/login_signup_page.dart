@@ -10,6 +10,7 @@ import 'config/api_config.dart';
 import 'welcome_pages.dart';
 import 'user_details_form_page.dart';
 import 'main.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Add this import
 
 // Replace with your actual client_id for web or custom flows if needed
 // const String googleClientId = '390094822294-dgoanud3udf4iasgm81g38qjho8n82eg.apps.googleusercontent.com';
@@ -27,11 +28,33 @@ final GoogleSignIn _googleSignIn = GoogleSignIn(
 
 
 // This page handles user login and signup
-class LoginSignupPage extends StatelessWidget {
+class LoginSignupPage extends StatefulWidget {
   const LoginSignupPage({super.key});
 
   @override
-  // Builds the login/signup UI
+  State<LoginSignupPage> createState() => _LoginSignupPageState();
+}
+
+class _LoginSignupPageState extends State<LoginSignupPage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkSessionAndRedirect();
+  }
+
+  Future<void> _checkSessionAndRedirect() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('current_user_id');
+    if (userId != null && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => WelcomeBackPage(currentUserId: userId),
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
