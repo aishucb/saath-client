@@ -5,7 +5,7 @@
 
 class ApiConfig {
   // Base URL for all API requests - use your PC's local IP for real device access
-  static const String baseUrl = 'http://192.168.1.6:5000';
+  static const String baseUrl = 'http://192.168.1.7:5000';
   
   // API Endpoints
   static String get homeEndpoint => '$baseUrl/';
@@ -21,4 +21,11 @@ class ApiConfig {
   
   // User Endpoints
   static String get customerEndpoint => '$baseUrl/api/customer';
+
+  // Event Endpoints
+  static String get eventsEndpoint => '$baseUrl/api/events';
+  static String get eventsUsersEndpoint => '$baseUrl/api/events-users';
+  static String get eventDetailsEndpoint => '$baseUrl/api/events/'; // Append event ID
+  static String get eventRegistrationEndpoint => '$baseUrl/api/event-registrations';
+  static String get eventUpdateSlotsEndpoint => '$baseUrl/api/events-users/'; // Append event ID + /update-slots
 }

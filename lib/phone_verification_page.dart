@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io'; // For InternetAddress and SocketException
 import 'package:flutter/services.dart'; // For TextInputFormatter
+import 'package:shared_preferences/shared_preferences.dart'; // For SharedPreferences
 import 'package:client/main.dart'; // Import HomePage
 import 'config/api_config.dart'; // Import ApiConfig
 import 'welcome_pages.dart'; // Import Welcome and WelcomeBack pages
@@ -82,6 +83,19 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final status = data['registrationStatus'];
+        
+        // Save JWT token and user ID to SharedPreferences
+        if (data['token'] != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userToken', data['token']);
+          await prefs.setString('current_user_id', data['customer']['_id']);
+          print('✅ Saved JWT token and user ID to SharedPreferences');
+          print('✅ Token: ${data['token'].substring(0, 20)}...');
+          print('✅ User ID: ${data['customer']['_id']}');
+        } else {
+          print('❌ No token received from backend');
+        }
+        
         if (status == 'newly_registered') {
           // Pass phone number to UserDetailsFormPage for auto-population
           String? phone = _verificationPhoneNumber;

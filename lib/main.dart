@@ -14,6 +14,11 @@ import 'welcome_pages.dart';
 import 'forum_page.dart';
 import 'chat_page.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // <-- Add this import
+import 'events_page.dart';
+import 'wellness_page.dart';
+import 'pages/event_detail_page.dart';
+import 'pages/join_event_page.dart';
+import 'pages/confirmation_page.dart';
 
 void main() {
   runApp(
@@ -254,9 +259,18 @@ class MyApp extends StatelessWidget {
         '/welcome': (context) => const WelcomeBackPage(), // Changed to WelcomeBackPage
         '/forum': (context) => const ForumPage(),
         '/chat': (context) => const ChatPage(),
+        '/events': (context) => const EventsPage(),
+        '/wellness': (context) => const WellnessPage(),
         // Add other routes here as needed
       },
       onGenerateRoute: (settings) {
+        // Handle dynamic routes
+        if (settings.name?.startsWith('/event/') ?? false) {
+          final eventId = settings.name?.split('/').last;
+          return MaterialPageRoute(
+            builder: (context) => EventDetailPage(eventId: eventId ?? ''),
+          );
+        }
         // Handle any undefined routes
         return MaterialPageRoute(
           builder: (context) => Scaffold(

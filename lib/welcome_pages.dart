@@ -76,7 +76,7 @@ class _WelcomePageState extends State<WelcomePage> {
       return digits;
     }
 
-    final url = Uri.parse('http://192.168.1.6:5000/api/customer'); // Use your computer's WiFi IP address from .env
+    final url = Uri.parse('http://192.168.1.7:5000/api/customer'); // Use your computer's WiFi IP address from .env
     try {
       final response = await http.post(
         url,
@@ -371,9 +371,9 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
   }
 
   Future<void> _initializeData() async {
-    // Only clear and save session if widget.currentUserId is provided
-    if (widget.currentUserId != null) {
-      await clearUserSession();
+    // Only update session if widget.currentUserId is provided and different from current
+    if (widget.currentUserId != null && widget.currentUserId != currentUserId) {
+      print('WelcomeBackPage - Updating session with new user ID: ${widget.currentUserId}');
       await saveUserSession(widget.currentUserId!);
     }
     await fetchUsers();
@@ -398,10 +398,11 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
       print('WelcomeBackPage - Clearing user session');
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('current_user_id');
+      await prefs.remove('userToken'); // Also clear the JWT token
       setState(() {
         currentUserId = null;
       });
-      print('WelcomeBackPage - Cleared user session');
+      print('WelcomeBackPage - Cleared user session and token');
     } catch (e) {
       print('WelcomeBackPage - Error clearing user session: $e');
     }
@@ -412,6 +413,25 @@ class _WelcomeBackPageState extends State<WelcomeBackPage> {
       print('WelcomeBackPage - Saving user session: $userId');
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('current_user_id', userId);
+      setState(() {
+        currentUserId = userId;
+      });
+      print('WelcomeBackPage - Saved user session: $userId');
+    } catch (e) {
+      print('WelcomeBackPage - Error saving user session: $e');
+    }
+  }
+
+  Future<void> saveUserSessionPreserveToken(String userId) async {
+    try {
+      print('WelcomeBackPage - Saving user session (preserving token): $userId');
+      final prefs = await SharedPreferences.getInstance();
+      final existingToken = prefs.getString('userToken'); // Preserve existing token
+      await prefs.setString('current_user_id', userId);
+      if (existingToken != null) {
+        await prefs.setString('userToken', existingToken); // Restore token
+        print('WelcomeBackPage - Preserved existing token');
+      }
       setState(() {
         currentUserId = userId;
       });

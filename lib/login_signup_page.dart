@@ -213,6 +213,19 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
                           debugPrint('Backend auth success: [1m${jsonEncode(data)}');
                           final status = data['registrationStatus'] ?? '';
                           final userName = data['user']['name'] ?? data['user']['email'] ?? 'user';
+                          
+                          // Save JWT token and user ID to SharedPreferences
+                          if (data['token'] != null) {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setString('userToken', data['token']);
+                            await prefs.setString('current_user_id', data['user']['_id']);
+                            debugPrint('✅ Saved JWT token and user ID to SharedPreferences');
+                            debugPrint('✅ Token: ${data['token'].substring(0, 20)}...');
+                            debugPrint('✅ User ID: ${data['user']['_id']}');
+                          } else {
+                            debugPrint('❌ No token received from backend');
+                          }
+                          
                           if (status == 'newly_registered') {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Welcome, $userName! Registration successful.')),
@@ -251,7 +264,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
                               SnackBar(content: Text('Welcome, $userName!')),
                             );
                           }
-                          // TODO: Save user session or navigate as needed
                         } else {
                           final error = jsonDecode(response.body)['error'] ?? 'Sign-in failed';
                           debugPrint('Backend auth error: $error');
